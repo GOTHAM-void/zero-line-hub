@@ -1,0 +1,25 @@
+# Environment & API keys (NEVER commit these to GitHub)
+.env
+.env.*
+!.env.example
+config.local.js
+firebase-config.json
+serviceAccountKey.json
+*firebase-adminsdk*.json
+*.pem
+*.key
+*.p12
+
+# Firebase & Node build/cache artifacts
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+node_modules/
+dist/
+build/
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
