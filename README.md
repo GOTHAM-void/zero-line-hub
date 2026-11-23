@@ -1,25 +1,27 @@
 # PlusFlow Clinic Hub
 
-Single-file clinical operating system uniting Front Desk QR Check-In, Doctor EHR, Paid-Only Pharmacy Dispatch, and real-time Firebase Firestore sync.
+Single-file clinical operating system + backend starter kit implementing the full **8-step Clinic Management Workflow**:
+1. **Registration** (Unique Cloud ID `CLD-XXXX`)
+2. **Appointment Scheduler** (Slot booking, conflict checks, 1-click Check-In → Token)
+3. **Check-in & Live Queue** (QR Walk-in Standee, priority queue, zero-PII `?track=` portal)
+4. **Consultation** (Doctor EHR, Allergy Guard, Smart Templates, Voice Rx)
+5. **Lab Tests (EHR ↔ Labs)** (Ordered → Sample Collected → Result Ready auto-synced to EHR)
+6. **Prescription (EHR → Pharmacy)** (Atomic Firestore stock deduction, Paid-Only Exit Gate)
+7. **Billing & Payment** (Front Desk counter, GST CSV, HMAC-verified Razorpay webhooks)
+8. **Follow-up & Notifications** (WhatsApp Cloud API / Twilio / SendGrid worker)
 
-## Included Files
-- `index.html` — Production-hardened single-file web app (no hardcoded API keys).
-- `firestore.rules` — Fail-closed RBAC Firestore security rules with append-only audit & DPDP consent logs.
-- `firestore.indexes.json` — Composite Firestore indexes for token queries.
-- `firebase.json` — Firebase CLI configuration for deploying rules and indexes.
-- `backend/firebaseAuth.ts` — Express RBAC middleware reading credentials from environment variables.
-- `.gitignore` — Blocks `.env`, `config.local.js`, service account JSONs, and private keys from being committed.
-- `.env.example` & `config.example.js` — Safe placeholder templates for local/server configuration.
+## Repository Layout
+- `index.html` — Production-hardened single-file frontend (Warm Cream + Botanical Olive/Oat/Terracotta button palette & Matte Black toggle; zero hardcoded API keys).
+- `firestore.rules` & `firestore.indexes.json` — Fail-closed RBAC rules and composite indexes for `tokens`, `appointments`, `lab_orders`, `prescriptions`, `medicines`, `payments`, `audit_logs`, and `consent_records`.
+- `firebase.json` — Firebase CLI config (`firebase deploy --only firestore`).
+- `backend/` — Express + TypeScript starter kit (`server.ts`, `firebaseAuth.ts`, `razorpayWebhook.ts`, `notificationsWorker.ts`).
+- `.gitignore`, `.env.example`, `config.example.js` — Strict API-key hygiene templates.
 
-## Publish to GitHub Pages
-1. Unzip this archive and upload all files to the root of your GitHub repository.
-2. In your GitHub repository, open **Settings → Pages**.
-3. Under **Build and deployment**, select **Deploy from a branch**, choose `main` and `/ (root)`, and click **Save**.
+## Deploy Frontend (GitHub Pages)
+1. Unzip and push all files to your GitHub repository root.
+2. Open **Settings → Pages → Deploy from a branch** (`main`, `/ (root)`).
 
-## Keep API Keys Hidden
-- **Never commit** `.env`, `config.local.js`, or any Firebase Admin `serviceAccountKey.json` file (all are pre-ignored in `.gitignore`).
-- Enter your Firebase Web config at runtime inside the app under **Settings & Menu → Admin → Cloud Sync**, or deploy `firestore.rules` and `firestore.indexes.json` with:
-  ```bash
-  firebase deploy --only firestore
-  ```
-- Restrict your Firebase Web API key in Google Cloud Console to your GitHub Pages domain (HTTP referrer restriction).
+## Deploy Backend & Keep API Keys Hidden
+1. Copy `.env.example` to `.env` locally (never commit `.env` or service account JSONs — both are blocked by `.gitignore`).
+2. Deploy Firestore rules/indexes: `firebase deploy --only firestore`
+3. Run backend: `cd backend && npm install && npm run build && npm start`
