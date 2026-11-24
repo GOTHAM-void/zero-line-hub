@@ -1382,6 +1382,108 @@
    color: #FFFDFA !important;
  }
 
+ 
+ /* =========================================================================
+    UX MOTION SYSTEM (Snappy Timing, Asymmetric Open/Close, Fitts's Law, Reduced Motion)
+    ========================================================================= */
+ :root {
+   --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+   --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+   --ease-move: cubic-bezier(0.65, 0, 0.35, 1);
+   --dur-feedback: 120ms;
+   --dur-enter: 220ms;
+   --dur-exit: 120ms;
+ }
+
+ /* Fitts's Law: >= 44px comfortable tap targets on touch screens */
+ @media (pointer: coarse) {
+   button, summary, .tab-btn, .subnav-pill {
+     min-height: 44px;
+   }
+ }
+
+ /* Snappy, interruptible button press & hover feedback (120ms) */
+ button {
+   transition: background-color var(--dur-feedback) var(--ease-enter),
+               border-color var(--dur-feedback) var(--ease-enter),
+               color var(--dur-feedback) var(--ease-enter),
+               transform var(--dur-feedback) var(--ease-enter),
+               box-shadow var(--dur-feedback) var(--ease-enter);
+ }
+ button:active:not(:disabled) {
+   transform: scale(0.975);
+ }
+
+ /* Asymmetric Side Drawer & Toast Transitions (Fast closing: 120ms exit vs 240ms enter) */
+ #dashboardSideDrawer {
+   transition: transform 240ms var(--ease-enter), opacity 220ms var(--ease-enter);
+   will-change: transform;
+ }
+ #dashboardSideDrawer.ux-drawer-closed {
+   transform: translateX(100%);
+   opacity: 0;
+   transition: transform 120ms var(--ease-exit), opacity 110ms var(--ease-exit);
+ }
+
+ #toastBanner {
+   transform-origin: bottom right;
+   transition: transform 200ms var(--ease-enter), opacity 180ms var(--ease-enter);
+ }
+ #toastBanner.ux-toast-exit {
+   transform: translateY(8px) scale(0.96);
+   opacity: 0;
+   transition: transform 110ms var(--ease-exit), opacity 100ms var(--ease-exit);
+ }
+
+ /* Origin-aware Q&A accordion + subtle hover depth */
+ details.clinical-panel {
+   transition: border-color 150ms var(--ease-enter), box-shadow 180ms var(--ease-enter), transform 180ms var(--ease-enter);
+ }
+ details.clinical-panel:hover {
+   transform: translateY(-2px);
+ }
+ details.clinical-panel > summary span.group-open\:rotate-45 {
+   transition: transform 180ms var(--ease-move);
+ }
+
+ /* Subtle list stagger for queue cards (40ms step, capped at 6 items <= 240ms) */
+ @keyframes uxItemEnter {
+   from { opacity: 0; transform: translateY(6px); }
+   to { opacity: 1; transform: translateY(0); }
+ }
+ #frontDeskQueueList > div,
+ #pharmacyDispatchList > div {
+   animation: uxItemEnter 200ms var(--ease-enter) both;
+ }
+ #frontDeskQueueList > div:nth-child(1), #pharmacyDispatchList > div:nth-child(1) { animation-delay: 0ms; }
+ #frontDeskQueueList > div:nth-child(2), #pharmacyDispatchList > div:nth-child(2) { animation-delay: 40ms; }
+ #frontDeskQueueList > div:nth-child(3), #pharmacyDispatchList > div:nth-child(3) { animation-delay: 80ms; }
+ #frontDeskQueueList > div:nth-child(4), #pharmacyDispatchList > div:nth-child(4) { animation-delay: 120ms; }
+ #frontDeskQueueList > div:nth-child(5), #pharmacyDispatchList > div:nth-child(5) { animation-delay: 160ms; }
+ #frontDeskQueueList > div:nth-child(6), #pharmacyDispatchList > div:nth-child(6) { animation-delay: 200ms; }
+
+ /* Exaggerated error shake (3 shakes over 300ms for invalid PIN / Key) */
+ @keyframes uxShakeError {
+   0%, 100% { transform: translateX(0); }
+   20% { transform: translateX(-6px); }
+   40% { transform: translateX(6px); }
+   60% { transform: translateX(-4px); }
+   80% { transform: translateX(4px); }
+ }
+ .ux-shake-error {
+   animation: uxShakeError 300ms var(--ease-move);
+ }
+
+ /* Principle 20: Always respect prefers-reduced-motion */
+ @media (prefers-reduced-motion: reduce) {
+   *, *::before, *::after {
+     animation-duration: 0.01ms !important;
+     animation-iteration-count: 1 !important;
+     transition-duration: 0.01ms !important;
+     scroll-behavior: auto !important;
+   }
+ }
+
  </style>
  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
@@ -1403,6 +1505,9 @@
 
  <!-- Right Quick Controls on Mobile (shown inline on right on Desktop via order) -->
  <div class="flex items-center gap-2 lg:hidden">
+ <button type="button" onclick="openCommandPalette()" aria-label="Quick Search and Commands" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-semibold transition">
+ <svg class="ink-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+ </button>
  <button type="button" onclick="lockClinicalSessionNow('Manual staff lock')" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-950/70 hover:bg-rose-900/70 text-rose-200 border border-rose-700/60 text-xs font-semibold transition" title="Lock clinical screens">
  <svg class="ink-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Lock
  </button>
@@ -1425,8 +1530,13 @@
  </button>
  </nav>
 
- <!-- Desktop Right Controls (Lock + Settings Side Panel Trigger) -->
+ <!-- Desktop Right Controls (Search Ctrl+K + Lock + Settings Side Panel Trigger) -->
  <div class="hidden lg:flex items-center gap-2">
+ <button type="button" id="openCmdPaletteHeaderBtn" onclick="openCommandPalette()" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-medium transition" title="Open Command Palette & Patient Search (Ctrl+K)">
+ <svg class="ink-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+ <span>Search</span>
+ <kbd class="px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 font-mono text-[10px] text-slate-400">Ctrl+K</kbd>
+ </button>
  <button type="button" id="clinicalLockNowBtn" onclick="lockClinicalSessionNow('Manual staff lock')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/70 hover:bg-rose-900/70 text-rose-200 border border-rose-700/60 text-xs font-semibold transition" title="Immediately lock clinical screens and clear visible patient data">
  <svg class="ink-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Lock
  </button>
@@ -2179,13 +2289,13 @@
  <span id="checkoutDistributorDiscountBadge" class="text-[10px] font-mono text-slate-400">10% Off + 15d Bonus Backup</span>
  </div>
  <div class="flex gap-1.5">
- <input id="checkoutDistributorRefCodeInput" type="text" placeholder="e.g. DIST-GADAG10 or MEDREP-HUB25" class="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-slate-100 font-mono uppercase text-xs" />
+ <input id="checkoutDistributorRefCodeInput" type="text" placeholder="e.g. DIST-PARTNER10 or MEDREP-PARTNER25" class="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-slate-100 font-mono uppercase text-xs" />
  <button id="applyDistributorRefCodeBtn" type="button" onclick="applyDistributorReferralCode()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs shrink-0">
  Apply Code
  </button>
  </div>
  <div class="flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400">
- <span>Try partner codes: <button type="button" onclick="quickFillDistributorCode('DIST-GADAG10')" class="text-teal-300 underline font-mono">DIST-GADAG10</button> • <button type="button" onclick="quickFillDistributorCode('MEDREP-HUB25')" class="text-teal-300 underline font-mono">MEDREP-HUB25</button></span>
+ <span>Try partner codes: <button type="button" onclick="quickFillDistributorCode('DIST-PARTNER10')" class="text-teal-300 underline font-mono">DIST-PARTNER10</button> • <button type="button" onclick="quickFillDistributorCode('MEDREP-PARTNER25')" class="text-teal-300 underline font-mono">MEDREP-PARTNER25</button></span>
  <span id="checkoutDistributorStatusText" class="text-emerald-300 font-semibold"></span>
  </div>
  </div>
@@ -2649,11 +2759,12 @@
 
  <!-- Right: Digital Prescription Builder & 1-Tap Complete -->
  <div class="lg:col-span-7 bg-slate-900/95 rounded-2xl shadow-lg border border-slate-800 p-5 space-y-4">
- <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+ <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
  <div>
- <h2 class="text-base font-bold text-slate-100">Error-Free Digital Prescription & PlusFlow Dispatch</h2>
- <p class="text-xs text-slate-400">Select medicines from standardized formulary — auto-checks allergies, calculates bill, and alerts pharmacy.</p>
+ <h2 class="text-base font-bold text-slate-100">Digital Prescription &amp; Pharmacy Dispatch</h2>
+ <p class="text-xs text-slate-400">Select medicines from formulary — auto-checks allergies, calculates bill, and syncs to pharmacy.</p>
  </div>
+ <span id="ehrDraftStatusBadge" class="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-slate-400">All changes saved</span>
  </div>
 
  <div id="allergyWarningBanner" class="hidden p-3 rounded-xl bg-rose-600 text-white text-xs font-semibold flex items-center justify-between">
@@ -2860,7 +2971,7 @@
  <span class="text-slate-400">Estimated Total Bill:</span>
  <strong id="rxTotalPreview" class="text-lg text-teal-300 ml-1">₹500</strong>
  </div>
- <button id="completeConsultBtn" type="button" onclick="completeConsultation()" class="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition">
+ <button id="completeConsultBtn" type="button" onclick="openRxReviewBeforeSign()" class="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition">
  ✓ Consultation Complete (Sync Cloud EHR + Alert Pharmacy & Desk)
  </button>
  </div>
@@ -3240,7 +3351,7 @@
  <div><strong class="text-slate-100">Support & Sales Email:</strong> <span class="font-mono text-teal-300">sales@zerolineclinic.com</span></div>
  <div><strong class="text-slate-100">WhatsApp / Phone Helpline:</strong> <span class="font-mono text-teal-300">+91 98765 43210</span></div>
  <div><strong class="text-slate-100">Operating Hours:</strong> Mon – Sat, 9:00 AM – 8:00 PM IST</div>
- <div><strong class="text-slate-100">Headquarters:</strong> Gadag-Betageri, Karnataka, India (Cloud Service Worldwide)</div>
+ <div><strong class="text-slate-100">Headquarters:</strong> India (Cloud Service Worldwide)</div>
  </div>
 
  <form id="clinicContactForm" onsubmit="submitClinicContactInquiry(event)" class="space-y-3">
@@ -3436,7 +3547,7 @@
  <p class="text-slate-300 leading-relaxed italic bg-slate-950/80 p-3 border border-slate-800">
  "Doctor, crowded waiting rooms cost you 15% walk-away patients, manual Rx writing takes 4 minutes per visit, and unpaid pharmacy handovers leak ₹30,000+ every month. PlusFlow puts a QR Standee on your desk so patients wait at home via live WhatsApp tokens, lets you dictate prescriptions in 1 click, and locks pharmacy handover until reception collects cash."
  </p>
- <div class="text-[11px] text-emerald-300 font-mono">Target ICP: Outpatient Clinics &amp; Polyclinics in Gadag, Hubballi, Dharwad &amp; Bengaluru.</div>
+ <div class="text-[11px] text-emerald-300 font-mono">Target ICP: Outpatient Clinics &amp; Polyclinics across India.</div>
  </div>
 
  <!-- Slide 2: Bottom-Up Market Sizing & Unit Economics -->
@@ -3447,7 +3558,7 @@
  </div>
  <h3 class="text-base font-extrabold text-white">Bottom-Up TAM / SAM / SOM &amp; Zero-Server Moat</h3>
  <ul class="space-y-2 text-slate-300">
- <li>• <strong>SOM (Year 1 — Karnataka Tier-2/3):</strong> 500 Clinics × ₹4,999/mo = <strong class="text-teal-300 font-mono">₹2.99 Cr ARR</strong></li>
+ <li>• <strong>SOM (Year 1 — India Tier-2/3):</strong> 500 Clinics × ₹4,999/mo = <strong class="text-teal-300 font-mono">₹2.99 Cr ARR</strong></li>
  <li>• <strong>SAM (India Outpatient + Attached Pharmacy):</strong> 180,000 Clinics = <strong class="text-teal-300 font-mono">₹1,080 Cr/yr</strong></li>
  <li>• <strong>Gross Margin:</strong> <strong class="text-emerald-400 font-mono">98.2%</strong> (₹0 cloud hosting cost via 5 TB Google Drive BYOS architecture)</li>
  <li>• <strong>LTV : CAC Ratio:</strong> <strong class="text-emerald-400 font-mono">18.4x</strong> (Stickiness via CLD-XXXX Patient Passports)</li>
@@ -4001,7 +4112,7 @@
  <div class="w-7 h-7 rounded-full bg-slate-800 text-slate-300 font-bold text-xs flex items-center justify-center border border-slate-700">PD</div>
  <div>
  <div class="text-xs font-bold text-slate-100">Preetam Dalabhanjan</div>
- <div class="text-[11px] text-slate-400">preetam.founder@gmail.com</div>
+ <div class="text-[11px] text-slate-400">admin@plusflow.in</div>
  </div>
  </div>
  <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">Requires Admin Key</span>
@@ -4644,6 +4755,7 @@
       }
 
       recordAuthOutcome("staff_pin", false);
+      triggerUxShake("pinInputField");
       showToast("Invalid Key. Access denied (5 failed attempts locks for 15 minutes).");
     }
 
@@ -4851,6 +4963,7 @@
       const entered = (document.getElementById("directAdminDemoCodeInput").value || "").trim();
       const ok = await isValidRoleTotpCode(entered, "demo");
       if (!ok) {
+        triggerUxShake("directAdminDemoCodeInput");
         showToast("Invalid Live Demo Authenticator code (or Demo Key).");
         return;
       }
@@ -4876,8 +4989,8 @@
       "Contact: mailto:security@plusflowlabs.in",
       "Expires: 2027-12-31T23:59:59.000Z",
       "Preferred-Languages: en",
-      "Canonical: https://preetamdalabhanjan-ship-it.github.io/zero-line-pro/.well-known/security.txt",
-      "Policy: https://preetamdalabhanjan-ship-it.github.io/zero-line-pro/?policy=security"
+      "Canonical: https://plusflow.in/.well-known/security.txt",
+      "Policy: https://plusflow.in/?policy=security"
     ].join("\n");
     const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
     const a = document.createElement("a");
@@ -5050,7 +5163,7 @@
 
   function promptAdminQuickSignIn() {
       document.getElementById("googleCustomNameInput").value = "Preetam Dalabhanjan";
-      document.getElementById("googleCustomEmailInput").value = "preetam.founder@gmail.com";
+      document.getElementById("googleCustomEmailInput").value = "admin@plusflow.in";
       document.getElementById("googleCustomRoleSelect").value = "admin";
       toggleGoogleAccessKeyField("admin");
       document.getElementById("googleRoleSecretInput").focus();
@@ -6563,6 +6676,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
       renderAll();
       previewWhatsAppToken(tokenStr);
       trackConversionEvent("tokensIssued");
+      flashButtonLifecycle("issueTokenSubmitBtn", "Issuing...", "Token Issued ✓");
       showToast(`Assigned ${cloudId} & live WhatsApp token ${tokenStr} to ${name}`);
     }
 
@@ -6578,7 +6692,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
         ? "HEAD TO CLINIC NOW: Your turn is in ~10 mins (or active now). Walk straight in!"
         : `WAIT AT HOME: ${waitingAhead} patient(s) ahead (~${estMins} mins). Arrive 10 mins before your turn.`;
 
-      const baseUrl = (window.location.origin && window.location.origin !== "null" ? window.location.origin + window.location.pathname : "https://preetamdalabhanjan-ship-it.github.io/zero-line-pro/");
+      const baseUrl = (window.location.origin && window.location.origin !== "null" ? window.location.origin + window.location.pathname : "https://plusflow.in/");
       const publicSnap = {
         token: item.token,
         status: item.status,
@@ -6821,7 +6935,22 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
       }).join("");
     }
 
-  function clearPaidAndCompletedFromDashboard() {
+  function clearPaidAndCompletedFromDashboard(confirmed) {
+      const clearable = (state.queue || []).filter((q) => q.status === "COMPLETED" && q.paid);
+      if (clearable.length === 0) {
+        showToast("No paid and completed bills to clear.");
+        return;
+      }
+      if (!confirmed) {
+        openPfConfirmModal({
+          eyebrow: "Archive Completed Bills",
+          title: `Clear ${clearable.length} paid & completed bill(s)?`,
+          body: "Completed items will be removed from the active list while keeping Today's Total Collected revenue intact.",
+          confirmLabel: "Clear Paid Bills",
+          destructive: true
+        }).then((ok) => { if (ok) clearPaidAndCompletedFromDashboard(true); });
+        return;
+      }
       const todayIso = new Date().toISOString().slice(0, 10);
       if (!state.archivedDailyStats || state.archivedDailyStats.date !== todayIso) {
         state.archivedDailyStats = { date: todayIso, consultCollected: 0, medCollected: 0, clearedCount: 0 };
@@ -7242,7 +7371,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
   function getWalkInCheckInUrl() {
       const base = (window.location.href && window.location.href.startsWith("http"))
         ? window.location.href.split("?")[0]
-        : "https://preetamdalabhanjan-ship-it.github.io/zero-line-pro/";
+        : "https://plusflow.in/";
       const room = (typeof state !== "undefined" && state.saasConfig && state.saasConfig.cloudRoomId)
         ? state.saasConfig.cloudRoomId
         : "DEFAULT_CLINIC";
@@ -7550,7 +7679,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
       const p = state.patients[item.cloudId] || { name: "Patient", phone: "9876543210" };
       const cleanPhone = String(p.phone || "").replace(/\D/g, "");
       const fullPhone = cleanPhone.length === 10 ? "91" + cleanPhone : cleanPhone;
-      const baseUrl = (window.location.origin && window.location.origin !== "null" ? window.location.origin + window.location.pathname : "https://preetamdalabhanjan-ship-it.github.io/zero-line-pro/");
+      const baseUrl = (window.location.origin && window.location.origin !== "null" ? window.location.origin + window.location.pathname : "https://plusflow.in/");
       const msg = `*${state.saasConfig.brandName} — Post-Visit Care & Review*\nHello ${p.name}, we hope you are feeling better!\nHow was your visit today? Rate us 1–5 ⭐ here (4–5⭐ opens Google Reviews):\n${baseUrl}?track=${encodeURIComponent(item.token)}`;
       window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
       showToast(`⭐ Sent automated post-visit Google Review WhatsApp ping to ${p.name}!`);
@@ -7559,7 +7688,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
   function buildPublicTrackerUrl(tokenStr) {
       const baseUrl = (window.location.origin && window.location.origin !== "null")
         ? (window.location.origin + window.location.pathname)
-        : "https://preetamdalabhanjan-ship-it.github.io/zero-line-pro/";
+        : "https://plusflow.in/";
       const item = (state.queue || []).find((q) => q.token === tokenStr);
       if (!item) return `${baseUrl}?track=${encodeURIComponent(tokenStr)}`;
       const waitingAhead = state.queue.filter(
@@ -7704,6 +7833,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
 
       saveState();
       populateFormularyDropdown();
+      markEhrDirty(true);
       renderDraftRxList();
       renderPharmacyInventory();
 
@@ -8773,7 +8903,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
       const lowItems = list.filter((m) => m.stock <= (m.minStock !== undefined ? m.minStock : 15));
       const itemsToOrder = lowItems.length > 0 ? lowItems : list.slice(0, 3);
       const lines = itemsToOrder.map((m, idx) => `${idx + 1}. *${m.name} (${m.power || "Standard"})* — Current Stock: ${m.stock} → Reorder Qty: *50 Packs*`);
-      const refPartnerCode = (state.saasConfig && state.saasConfig.distributorPartnerCode) || "DIST-GADAG10";
+      const refPartnerCode = (state.saasConfig && state.saasConfig.distributorPartnerCode) || "DIST-PARTNER10";
       const poText = `*${(state.saasConfig && state.saasConfig.brandName) || "PlusFlow Clinic Hub"} — WHOLESALE PURCHASE ORDER*\nDate: ${new Date().toISOString().slice(0, 10)}\nDistributor Partner Code: *${refPartnerCode}*\n\nPlease dispatch the following urgent restock items:\n${lines.join("\n")}\n\nPlease confirm invoice & delivery ETA.\n_Supplier Partner Perk: Refer neighboring clinics to https://plusflow.in/?ref=${encodeURIComponent(refPartnerCode)} for instant digital WhatsApp POs & ₹1,000 partner credit!_`;
       window.open(`https://wa.me/${distPhone}?text=${encodeURIComponent(poText)}`, "_blank", "noopener,noreferrer");
       showToast(`Opened 1-Click WhatsApp Purchase Order (${itemsToOrder.length} items) to Wholesale Distributor (+${distPhone})!`);
@@ -8965,13 +9095,23 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
     if (typeof showToast === "function") showToast("Announced " + tok + " on Waiting Room TV", "info");
   }
 
-  function wipeAllClinicDataWithConfirmation() {
+  function wipeAllClinicDataWithConfirmation(confirmed) {
+    if (!confirmed) {
+      openPfConfirmModal({
+        eyebrow: "DPDP Data Erasure",
+        title: "Wipe all local clinic & patient records?",
+        body: "This permanently clears local browser storage and resets the clinic workspace to a clean baseline.",
+        confirmLabel: "Wipe Local Data",
+        destructive: true
+      }).then((ok) => { if (ok) wipeAllClinicDataWithConfirmation(true); });
+      return;
+    }
     try {
       localStorage.removeItem("zero_line_clinic_cloud_v1");
       sessionStorage.clear();
     } catch (e) {}
     state = JSON.parse(JSON.stringify(DEFAULT_STATE));
-    if (isProductionSafeModeEnabled()) {
+    if (isProductionSafeMode()) {
       state.patients = {};
       state.queue = [];
     }
@@ -9579,7 +9719,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
         activeSpecialty: "GENERAL",
         viralTrackerClicks: 14,
         distributorReferrals: [
-          { code: "DIST-GADAG10", distributorName: "Sri Siddheshwar Pharma Distributors (Gadag)", discountPct: 10, bonusDays: 15, repCreditInr: 1000 }
+          { code: "DIST-PARTNER10", distributorName: "Regional Pharma Distributors", discountPct: 10, bonusDays: 15, repCreditInr: 1000 }
         ],
         appliedReferralCode: ""
       };
@@ -9701,7 +9841,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
     const badgeEl = document.getElementById("checkoutDistributorDiscountBadge");
     const rawCode = (inp ? inp.value : "").trim().toUpperCase();
     if (!rawCode) {
-      if (statusEl) statusEl.textContent = "Enter a partner code (e.g. DIST-GADAG10)";
+      if (statusEl) statusEl.textContent = "Enter a partner code (e.g. DIST-PARTNER10)";
       return;
     }
     const baseAmt = (selectedCheckoutPlan && selectedCheckoutPlan.baseAmount)
@@ -9748,8 +9888,8 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
   }
 
   function updateSampleSupplierPoPreview() {
-    const distName = (document.getElementById("samplePoDistributorNameInput") || {}).value || "Sri Siddheshwar Pharma Distributors";
-    const refCode = (document.getElementById("samplePoPartnerCodeInput") || {}).value || "DIST-GADAG10";
+    const distName = (document.getElementById("samplePoDistributorNameInput") || {}).value || "Regional Pharma Distributors Distributors";
+    const refCode = (document.getElementById("samplePoPartnerCodeInput") || {}).value || "DIST-PARTNER10";
     const clinicName = (typeof state !== "undefined" && state.saasConfig && state.saasConfig.brandName) || "PlusFlow Clinic Hub";
     const previewEl = document.getElementById("samplePoMessagePreviewBox");
     if (!previewEl) return;
@@ -9908,9 +10048,27 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
       const drawer = document.getElementById("dashboardSideDrawer");
       const backdrop = document.getElementById("dashboardSideDrawerBackdrop");
       if (!drawer || !backdrop) return;
-      const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : drawer.classList.contains("hidden");
-      drawer.classList.toggle("hidden", !shouldOpen);
-      backdrop.classList.toggle("hidden", !shouldOpen);
+      const isCurrentlyHidden = drawer.classList.contains("hidden") || drawer.classList.contains("ux-drawer-closed");
+      const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : isCurrentlyHidden;
+      clearTimeout(window._drawerCloseTimer);
+      if (shouldOpen) {
+        drawer.classList.remove("hidden");
+        backdrop.classList.remove("hidden");
+        drawer.classList.add("ux-drawer-closed");
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            drawer.classList.remove("ux-drawer-closed");
+          });
+        });
+      } else {
+        drawer.classList.add("ux-drawer-closed");
+        backdrop.classList.add("hidden");
+        window._drawerCloseTimer = setTimeout(() => {
+          if (drawer.classList.contains("ux-drawer-closed")) {
+            drawer.classList.add("hidden");
+          }
+        }, 130);
+      }
     }
 
   function openMasterSettingsModal() {
@@ -10251,6 +10409,14 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
   // Tab switching, toast notifications, HTML escaping, counters, master renderAll() orchestrator, and conversion analytics
   // ==========================================================================
 
+  function triggerUxShake(elId) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.classList.remove("ux-shake-error");
+      void el.offsetWidth;
+      el.classList.add("ux-shake-error");
+    }
+
   function showToast(msg) {
       const banner = document.getElementById("toastBanner");
       const text = document.getElementById("toastText");
@@ -10266,7 +10432,23 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
       document.getElementById("toastBanner").classList.add("hidden");
     }
 
-  function switchTab(tabName, bypassPin) {
+  function switchTab(tabName, bypassPin, skipDirtyCheck) {
+      if (!skipDirtyCheck && _activeMainTab === "doctor" && tabName !== "doctor" && _ehrDirty) {
+        openPfConfirmModal({
+          eyebrow: "Unsaved Clinical Notes",
+          title: "Leave Doctor EHR with unsaved changes?",
+          body: "You have unsaved diagnosis notes or draft medicines. Stay to sign the prescription, or leave and keep the draft in memory.",
+          confirmLabel: "Leave Tab",
+          destructive: false
+        }).then((ok) => {
+          if (ok) {
+            markEhrDirty(false);
+            switchTab(tabName, bypassPin, true);
+          }
+        });
+        return;
+      }
+      _activeMainTab = tabName;
       if (!bypassPin && (tabName === "doctor" || tabName === "saas")) {
         const isUnlocked = tabName === "doctor" ? unlockedRoles.doctor : unlockedRoles.saas;
         if (!isUnlocked) {
@@ -10406,13 +10588,24 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
     const dEl = document.getElementById("apptDateInput");
     if (dEl) dEl.value = new Date().toISOString().slice(0, 10);
     renderAppointmentsView();
+    flashButtonLifecycle("submitAppointmentBtn", "Booking...", "Booked ✓");
     showToast(`Appointment ${appt.id} booked for ${name} (${date} · ${timeSlot}).`);
   }
 
-  function cancelAppointmentSlot(apptId) {
+  function cancelAppointmentSlot(apptId, confirmed) {
     ensureClinicalWorkflowState();
     const appt = state.appointments.find((a) => a.id === apptId);
     if (!appt || appt.status !== "BOOKED") return;
+    if (!confirmed) {
+      openPfConfirmModal({
+        eyebrow: "Cancel Appointment",
+        title: `Cancel slot for ${appt.patientName}?`,
+        body: `This will release ${appt.date} at ${appt.timeSlot} and mark appointment ${appt.id} as cancelled.`,
+        confirmLabel: "Cancel Appointment",
+        destructive: true
+      }).then((ok) => { if (ok) cancelAppointmentSlot(apptId, true); });
+      return;
+    }
     appt.status = "CANCELLED";
     appendSecurityAuditEvent("APPOINTMENT_CANCELLED", `${appt.id} cancelled`);
     saveState();
@@ -10917,7 +11110,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
   window.addEventListener("keydown", (e) => {
       if (typeof _clinicalSessionLocked !== "undefined" && _clinicalSessionLocked) return;
       if (e.key === "Escape" && !isPublicPatientPortalMode()) {
-        if (typeof closeDashboardSideDrawer === "function") closeDashboardSideDrawer();
+        if (typeof toggleDashboardSideDrawer === "function") toggleDashboardSideDrawer(false);
         ["masterSettingsModal", "founderPitchModal", "walkInQrStandeeModal", "waitingRoomTvModal", "ecosystemArchitectureModal", "cloudSyncModal", "googleLoginModal", "onlineCheckoutModal", "slipModal", "legalModal", "pinModal", "installModal", "sampleSupplierPoModal", "customDomainSeoModal", "patientLiveTrackerOverlay"].forEach((mid) => {
           const mel = document.getElementById(mid);
           if (mel && !mel.classList.contains("hidden")) mel.classList.add("hidden");
@@ -11047,6 +11240,250 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
     } catch (e) {}
   });
 
+
+  // ==========================================================================
+  // [SECTION 15] CLINIC OS UX UPGRADES (Confirm Dialog, Ctrl+K Palette, EHR Dirty Guard, Pre-Sign Rx, Single-Open FAQ)
+  // ==========================================================================
+  let _pfConfirmResolve = null;
+  let _ehrDirty = false;
+  let _activeMainTab = "frontdesk";
+
+  function openPfConfirmModal({ eyebrow, title, body, confirmLabel, destructive }) {
+    return new Promise((resolve) => {
+      _pfConfirmResolve = resolve;
+      const modal = document.getElementById("pfConfirmModal");
+      if (!modal) { resolve(true); return; }
+      const eb = document.getElementById("pfConfirmEyebrow");
+      const ti = document.getElementById("pfConfirmTitle");
+      const bo = document.getElementById("pfConfirmBody");
+      const ac = document.getElementById("pfConfirmAcceptBtn");
+      if (eb) eb.textContent = eyebrow || "Confirmation Required";
+      if (ti) ti.textContent = title || "Confirm this action";
+      if (bo) bo.textContent = body || "";
+      if (ac) {
+        ac.textContent = confirmLabel || "Confirm";
+        ac.className = destructive
+          ? "badge-calm-terracotta px-4 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold"
+          : "btn-calm-olive px-4 py-2 rounded-lg bg-teal-600 text-white text-xs font-bold";
+      }
+      modal.classList.remove("hidden");
+      setTimeout(() => { if (ac) ac.focus(); }, 30);
+    });
+  }
+
+  function closePfConfirmModal(accepted) {
+    const modal = document.getElementById("pfConfirmModal");
+    if (modal) modal.classList.add("hidden");
+    const fn = _pfConfirmResolve;
+    _pfConfirmResolve = null;
+    if (typeof fn === "function") fn(Boolean(accepted));
+  }
+
+  function flashButtonLifecycle(btnOrId, savingText, doneText) {
+    const btn = typeof btnOrId === "string" ? document.getElementById(btnOrId) : btnOrId;
+    if (!btn) return;
+    if (!btn.dataset.origText) btn.dataset.origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = savingText || "Saving...";
+    setTimeout(() => {
+      btn.textContent = doneText || "Saved ✓";
+      setTimeout(() => {
+        btn.textContent = btn.dataset.origText;
+        btn.disabled = false;
+      }, 900);
+    }, 220);
+  }
+
+  function markEhrDirty(isDirty) {
+    _ehrDirty = Boolean(isDirty);
+    const badge = document.getElementById("ehrDraftStatusBadge");
+    if (!badge) return;
+    if (_ehrDirty) {
+      const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      badge.textContent = `Draft unsaved · ${now}`;
+      badge.className = "text-[11px] font-mono px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-700/60 text-amber-300";
+    } else {
+      badge.textContent = "All changes saved";
+      badge.className = "text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-slate-400";
+    }
+  }
+
+  function openRxReviewBeforeSign() {
+    const item = state.queue.find((q) => q.token === activeDoctorToken);
+    if (!item) {
+      showToast("No active patient selected.");
+      return;
+    }
+    if (item.status === "PHARMACY_READY" || item.status === "COMPLETED") {
+      showToast(`Token ${item.token} is already signed and dispatched.`);
+      return;
+    }
+    const p = state.patients[item.cloudId] || { name: "Patient", cloudId: item.cloudId, allergies: "None" };
+    const diag = (document.getElementById("rxDiagnosis") || {}).value?.trim() || "General Outpatient Consultation";
+    const consultFee = Math.max(0, parseInt((document.getElementById("rxConsultFee") || {}).value, 10) || 500);
+    const labTests = (document.getElementById("rxLabTestsInput") || {}).value?.trim() || "";
+    const followUp = (document.getElementById("rxFollowUpDate") || {}).value || "";
+    const cur = (state.saasConfig && state.saasConfig.currency) || "₹";
+    const medTotal = (draftRxMedicines || []).reduce((acc, m) => acc + (Number(m.price) || 0), 0);
+    const grandTotal = consultFee + medTotal;
+    const hasAllergy = p.allergies && p.allergies.toLowerCase() !== "none";
+
+    const body = document.getElementById("pfRxReviewBody");
+    if (body) {
+      body.innerHTML = `
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-2">
+          <div>
+            <div class="font-bold text-sm text-slate-100">${escapeHtml(p.name)}</div>
+            <div class="font-mono text-[11px] text-slate-400">${escapeHtml(p.cloudId)} · Token ${escapeHtml(item.token)}</div>
+          </div>
+          <span class="px-2.5 py-1 rounded-md text-[11px] font-semibold ${hasAllergy ? 'bg-amber-950 text-amber-300 border border-amber-700' : 'bg-teal-950 text-teal-300 border border-teal-800'}">
+            ${hasAllergy ? `Allergy Verified: ${escapeHtml(p.allergies)}` : "No Known Allergies"}
+          </span>
+        </div>
+        <div>
+          <span class="text-slate-400 block text-[11px]">Diagnosis</span>
+          <strong class="text-slate-100 text-sm">${escapeHtml(diag)}</strong>
+        </div>
+        <div class="border-t border-slate-800 pt-2.5 space-y-1.5">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Prescribed Medicines (${draftRxMedicines.length})</div>
+          ${draftRxMedicines.length === 0
+            ? `<div class="text-slate-500">Consultation only (no medicines added)</div>`
+            : draftRxMedicines.map((m) => `<div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-200">${escapeHtml(m.name)} <span class="text-slate-400">(${escapeHtml(m.dosage)} · ${m.days}d)</span></span><span class="font-mono text-slate-200">${cur}${m.price}</span></div>`).join("")
+          }
+        </div>
+        ${labTests ? `<div class="text-slate-300"><strong>Lab Orders:</strong> ${escapeHtml(labTests)}</div>` : ""}
+        ${followUp ? `<div class="text-slate-300"><strong>Follow-Up:</strong> <span class="font-mono">${escapeHtml(followUp)}</span></div>` : ""}
+        <div class="pt-2.5 border-t border-slate-800 flex items-center justify-between text-sm font-bold text-slate-100">
+          <span>Total Bill (Consult + Rx)</span>
+          <span class="font-mono">${cur}${grandTotal}</span>
+        </div>
+        <p class="text-[11px] text-slate-400">Once signed, this prescription is locked against silent edits and dispatched immediately to Front Desk Billing and Pharmacy.</p>
+      `;
+    }
+    const modal = document.getElementById("pfRxReviewModal");
+    if (modal) modal.classList.remove("hidden");
+  }
+
+  function closeRxReviewModal() {
+    const modal = document.getElementById("pfRxReviewModal");
+    if (modal) modal.classList.add("hidden");
+  }
+
+  function confirmAndSignPrescription() {
+    flashButtonLifecycle("pfConfirmSignRxBtn", "Signing...", "Signed ✓");
+    setTimeout(() => {
+      closeRxReviewModal();
+      markEhrDirty(false);
+      completeConsultation();
+    }, 240);
+  }
+
+  // Command Palette (Ctrl+K / Cmd+K)
+  function openCommandPalette() {
+    if (isPublicPatientPortalMode() || _clinicalSessionLocked) return;
+    const modal = document.getElementById("pfCommandPaletteModal");
+    const inp = document.getElementById("pfCmdSearchInput");
+    if (!modal || !inp) return;
+    inp.value = "";
+    modal.classList.remove("hidden");
+    renderCommandPaletteResults("");
+    setTimeout(() => inp.focus(), 30);
+  }
+
+  function closeCommandPalette() {
+    const modal = document.getElementById("pfCommandPaletteModal");
+    if (modal) modal.classList.add("hidden");
+  }
+
+  function renderCommandPaletteResults(query) {
+    const box = document.getElementById("pfCmdResultsList");
+    if (!box) return;
+    const q = (query || "").trim().toLowerCase();
+    const actions = [
+      { label: "Open Front Desk & Live Queue", meta: "Module · Alt+1", run: () => switchTab("frontdesk", true) },
+      { label: "Open Appointment Scheduler", meta: "Front Desk", run: () => { switchTab("frontdesk", true); switchFrontDeskSubView("appointments"); } },
+      { label: "Open Billing & Cash Counter", meta: "Front Desk", run: () => { switchTab("frontdesk", true); switchFrontDeskSubView("billing"); } },
+      { label: "Open Doctor EHR & Prescription Builder", meta: "Module · Alt+2", run: () => switchTab("doctor") },
+      { label: "Open Lab Orders & Results", meta: "Doctor EHR", run: () => { switchTab("doctor"); if (unlockedRoles.doctor) switchDoctorSubView("labs"); } },
+      { label: "Open Pharmacy Packing & Inventory", meta: "Module · Alt+3", run: () => switchTab("pharmacy", true) },
+      { label: "Open Cloud Patient Directory", meta: "Records", run: () => switchTab("cloud", true) },
+      { label: "Open Settings & Admin Panel", meta: "Settings", run: () => openMasterSettingsModal() },
+      { label: "Toggle Warm Cream / Matte Black Theme", meta: "Appearance", run: () => toggleEditorialTheme() },
+    ];
+
+    const matchedActions = actions.filter((a) => !q || a.label.toLowerCase().includes(q) || a.meta.toLowerCase().includes(q));
+    const matchedPatients = [];
+    if (q.length >= 2 && state && state.patients) {
+      Object.values(state.patients).forEach((p) => {
+        if (
+          (p.name || "").toLowerCase().includes(q) ||
+          (p.cloudId || "").toLowerCase().includes(q) ||
+          (p.phone || "").includes(q)
+        ) {
+          matchedPatients.push(p);
+        }
+      });
+    }
+
+    window._pfCmdHandlers = [];
+    const rows = [];
+
+    matchedPatients.slice(0, 5).forEach((p) => {
+      const idx = window._pfCmdHandlers.length;
+      window._pfCmdHandlers.push(() => {
+        closeCommandPalette();
+        quickCheckInFromCloud(p.cloudId);
+      });
+      rows.push(`<button type="button" onclick="window._pfCmdHandlers[${idx}]()" class="w-full px-3 py-2.5 rounded-lg hover:bg-slate-800/80 flex items-center justify-between text-left transition"><span class="font-semibold text-slate-100">${escapeHtml(p.name)} <span class="font-mono text-teal-400 ml-1">${escapeHtml(p.cloudId)}</span></span><span class="text-[11px] font-mono text-slate-400">Load Patient →</span></button>`);
+    });
+
+    matchedActions.slice(0, 7).forEach((a) => {
+      const idx = window._pfCmdHandlers.length;
+      window._pfCmdHandlers.push(() => {
+        closeCommandPalette();
+        a.run();
+      });
+      rows.push(`<button type="button" onclick="window._pfCmdHandlers[${idx}]()" class="w-full px-3 py-2.5 rounded-lg hover:bg-slate-800/80 flex items-center justify-between text-left transition"><span class="font-medium text-slate-200">${escapeHtml(a.label)}</span><span class="text-[11px] font-mono text-slate-400">${escapeHtml(a.meta)}</span></button>`);
+    });
+
+    box.innerHTML = rows.length
+      ? rows.join("")
+      : `<div class="p-4 text-center text-slate-500">No matching commands or patients for "${escapeHtml(query)}".</div>`;
+  }
+
+  // Wire Ctrl+K / Cmd+K shortcut, EHR dirty tracking, and single-open Q&A accordion
+  window.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key || "").toLowerCase() === "k") {
+      e.preventDefault();
+      const modal = document.getElementById("pfCommandPaletteModal");
+      if (modal && !modal.classList.contains("hidden")) closeCommandPalette();
+      else openCommandPalette();
+    } else if (e.key === "Escape") {
+      closeCommandPalette();
+      closeRxReviewModal();
+      closePfConfirmModal(false);
+    }
+  });
+
+  window.addEventListener("DOMContentLoaded", () => {
+    // 1. Track dirty state on Doctor EHR inputs
+    ["rxDiagnosis", "soapSubjective", "soapObjective", "soapAssessment", "soapPlan", "rxLabTestsInput", "rxNotes"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("input", () => markEhrDirty(true));
+    });
+    // 2. Single-open compact accordion for the 6 sketched Q&A tabs
+    const qaDetails = Array.from(document.querySelectorAll("#landingOverviewSection details.clinical-panel"));
+    qaDetails.forEach((d) => {
+      d.addEventListener("toggle", () => {
+        if (d.open) {
+          qaDetails.forEach((other) => {
+            if (other !== d && other.open) other.open = false;
+          });
+        }
+      });
+    });
+  });
+
 </script>
 
   <!-- PlusFlow 5TB Ecosystem vs Client Dedicated Codebase Switcher Modal -->
@@ -11102,7 +11539,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-[11px] font-bold text-slate-300 mb-1">Active Network / Client Web URL</label>
-            <input aria-label="ecoCustomAppUrlInput" id="ecoCustomAppUrlInput" type="url" value="https://preetamdalabhanjan-ship-it.github.io/zero-line-pro/" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-mono text-teal-300" />
+            <input aria-label="ecoCustomAppUrlInput" id="ecoCustomAppUrlInput" type="url" value="https://plusflow.in/" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-mono text-teal-300" />
           </div>
           <div>
             <label class="block text-[11px] font-bold text-slate-300 mb-1">Client Private Apps Script Cloud URL (Optional)</label>
@@ -11162,7 +11599,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
         <div>
           <label for="samplePoDistributorNameInput" class="block font-semibold text-slate-300 mb-1">Distributor / Agency Name</label>
-          <input id="samplePoDistributorNameInput" type="text" value="Sri Siddheshwar Pharma" oninput="updateSampleSupplierPoPreview()" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
+          <input id="samplePoDistributorNameInput" type="text" value="Regional Pharma Distributors" oninput="updateSampleSupplierPoPreview()" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
         </div>
         <div>
           <label for="samplePoDistributorPhoneInput" class="block font-semibold text-slate-300 mb-1">Supplier WhatsApp Number</label>
@@ -11170,7 +11607,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
         </div>
         <div>
           <label for="samplePoPartnerCodeInput" class="block font-semibold text-slate-300 mb-1">Partner Referral Code</label>
-          <input id="samplePoPartnerCodeInput" type="text" value="DIST-GADAG10" oninput="updateSampleSupplierPoPreview()" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-emerald-300 font-mono uppercase" />
+          <input id="samplePoPartnerCodeInput" type="text" value="DIST-PARTNER10" oninput="updateSampleSupplierPoPreview()" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-emerald-300 font-mono uppercase" />
         </div>
       </div>
       <div>
@@ -11178,7 +11615,7 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
         <textarea id="samplePoMessagePreviewBox" rows="6" readonly class="w-full rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs font-mono text-slate-200"></textarea>
       </div>
       <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800">
-        <button type="button" onclick="quickFillDistributorCode((document.getElementById('samplePoPartnerCodeInput') || {}).value || 'DIST-GADAG10'); closeSampleSupplierPoModal(); openOnlineCheckoutModal('Gold Clinic Cloud Plan', state.saasConfig.monthlyPrice, '30-Day Backup + Multi-PC Sync');" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 text-xs font-bold">
+        <button type="button" onclick="quickFillDistributorCode((document.getElementById('samplePoPartnerCodeInput') || {}).value || 'DIST-PARTNER10'); closeSampleSupplierPoModal(); openOnlineCheckoutModal('Gold Clinic Cloud Plan', state.saasConfig.monthlyPrice, '30-Day Backup + Multi-PC Sync');" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 text-xs font-bold">
           Test Partner Code in Gold Checkout (-10%)
         </button>
         <button id="sendSampleSupplierWhatsAppBtn" type="button" onclick="dispatchSampleSupplierWhatsAppPo()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold text-xs">
@@ -11243,5 +11680,55 @@ export function requireRole(allowedRoles: Array<'admin' | 'doctor' | 'receptioni
       </button>
     </div>
   </div>
+
+  <!-- Reusable Confirmation Dialog (Destructive Actions & Unsaved Changes Guard) -->
+  <div id="pfConfirmModal" onclick="if (event.target === this) closePfConfirmModal(false);" class="hidden fixed inset-0 z-[90] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="clinical-panel bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
+      <div class="space-y-1.5">
+        <div id="pfConfirmEyebrow" class="text-[11px] font-mono uppercase tracking-wider text-amber-400">Confirmation Required</div>
+        <h3 id="pfConfirmTitle" class="text-base font-bold text-slate-100">Confirm this action</h3>
+        <p id="pfConfirmBody" class="text-xs text-slate-400 leading-relaxed"></p>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <button id="pfConfirmCancelBtn" type="button" onclick="closePfConfirmModal(false)" class="btn-calm-oat px-4 py-2 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 text-xs font-semibold">Cancel</button>
+        <button id="pfConfirmAcceptBtn" type="button" onclick="closePfConfirmModal(true)" class="btn-calm-olive px-4 py-2 rounded-lg bg-teal-600 text-white text-xs font-bold">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ctrl+K Command Palette & Global Clinical Search -->
+  <div id="pfCommandPaletteModal" onclick="if (event.target === this) closeCommandPalette();" class="hidden fixed inset-0 z-[85] bg-black/65 backdrop-blur-sm flex items-start justify-center pt-16 sm:pt-24 px-4 no-print">
+    <div class="clinical-panel bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden">
+      <div class="p-3.5 border-b border-slate-800 flex items-center gap-2.5">
+        <svg class="ink-icon text-slate-400" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="pfCmdSearchInput" type="text" autocomplete="off" placeholder="Jump to module or search patient name, CLD-XXXX, or T-XXX..." oninput="renderCommandPaletteResults(this.value)" class="flex-1 bg-transparent !border-0 !shadow-none px-1 py-1 text-sm focus:outline-none" />
+        <button type="button" onclick="closeCommandPalette()" class="px-2 py-1 rounded-md bg-slate-800 text-slate-400 text-[11px] font-mono">Esc</button>
+      </div>
+      <div id="pfCmdResultsList" class="max-h-80 overflow-y-auto divide-y divide-slate-800/70 p-2 text-xs"></div>
+      <div class="px-4 py-2 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+        <span>Enter to open · Esc to close</span>
+        <span>Permission-aware search</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1-Step Pre-Sign Consultation & Prescription Review Modal -->
+  <div id="pfRxReviewModal" onclick="if (event.target === this) closeRxReviewModal();" class="hidden fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="clinical-panel bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <div class="text-[11px] font-mono uppercase tracking-wider text-teal-400">Clinical Sign-Off</div>
+          <h3 class="text-base font-bold text-slate-100">Review &amp; Sign Prescription</h3>
+        </div>
+        <button type="button" onclick="closeRxReviewModal()" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-bold">✕</button>
+      </div>
+      <div id="pfRxReviewBody" class="p-5 overflow-y-auto space-y-3 text-xs"></div>
+      <div class="px-5 py-3.5 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950">
+        <button type="button" onclick="closeRxReviewModal()" class="btn-calm-oat px-4 py-2 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 text-xs font-semibold">← Back to Edit</button>
+        <button id="pfConfirmSignRxBtn" type="button" onclick="confirmAndSignPrescription()" class="btn-calm-olive px-5 py-2.5 rounded-lg bg-emerald-600 text-white text-xs font-bold">✓ Sign &amp; Dispatch to Pharmacy</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
